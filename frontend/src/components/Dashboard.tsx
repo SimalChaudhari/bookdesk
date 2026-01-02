@@ -106,7 +106,7 @@ const Dashboard = () => {
   // GraphQL queries and mutations
   // Using cache-first to prevent duplicate calls - only fetches from network if cache is empty
   // nextFetchPolicy ensures subsequent fetches also use cache-first
-  const { loading, error, data, refetch } = useQuery<{ books: Book[] }>(GET_BOOKS, {
+  const { loading, error, data } = useQuery<{ books: Book[] }>(GET_BOOKS, {
     fetchPolicy: 'cache-first',
     nextFetchPolicy: 'cache-first',
     notifyOnNetworkStatusChange: false, // Disable to prevent extra network calls
