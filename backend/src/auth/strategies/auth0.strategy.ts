@@ -2,44 +2,48 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
+import { getApplicationConfig } from '../../config/configuration';
+import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
+import { APP_CONSTANTS } from '../../common/constants/app.constants';
 
-export interface JwtPayload {
-  sub: string;
-  email?: string;
-  'https://your-auth0-domain.com/roles'?: string[];
-}
-
+/**
+ * Auth0Strategy - Passport strategy for Auth0 JWT authentication
+ * 
+ * Validates JWT tokens issued by Auth0 using JWKS (JSON Web Key Set).
+ * Implements proper token validation and error handling.
+ */
 @Injectable()
-export class Auth0Strategy extends PassportStrategy(Strategy) {
+export class Auth0Strategy extends PassportStrategy(Strategy, 'jwt') {
   constructor() {
-    const issuerUrl = process.env.AUTH0_ISSUER_URL;
-    const audience = process.env.AUTH0_AUDIENCE;
-
-    if (!issuerUrl) {
-      throw new Error('AUTH0_ISSUER_URL environment variable is required');
-    }
-    if (!audience) {
-      throw new Error('AUTH0_AUDIENCE environment variable is required');
-    }
+    const config = getApplicationConfig();
+    const auth0Config = config.auth0;
 
     super({
       secretOrKeyProvider: passportJwtSecret({
         cache: true,
         rateLimit: true,
-        jwksRequestsPerMinute: 5,
-        jwksUri: `${issuerUrl}/.well-known/jwks.json`,
+        jwksRequestsPerMinute: auth0Config.jwksRequestsPerMinute,
+        jwksUri: auth0Config.jwksUri,
       }),
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      audience: audience,
-      issuer: `${issuerUrl}/`,
-      algorithms: ['RS256'],
+      audience: auth0Config.audience,
+      issuer: `${auth0Config.issuerUrl}/`,
+      algorithms: auth0Config.algorithms,
     });
   }
 
-  async validate(payload: JwtPayload) {
-    if (!payload) {
-      throw new UnauthorizedException();
+  /**
+   * Validates the JWT payload after token verification
+   * 
+   * @param payload - Decoded JWT payload
+   * @returns Validated payload
+   * @throws UnauthorizedException if payload is invalid
+   */
+  async validate(payload: JwtPayload): Promise<JwtPayload> {
+    if (!payload || !payload.sub) {
+      throw new UnauthorizedException(APP_CONSTANTS.ERROR_MESSAGES.INVALID_TOKEN);
     }
+
     return payload;
   }
 }

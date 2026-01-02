@@ -1,23 +1,32 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { getApplicationConfig } from './config/configuration';
+import { APP_CONSTANTS } from './common/constants/app.constants';
+
+const logger = new Logger('Bootstrap');
 
 /**
- * Bootstrap function - Starts the NestJS application
- * Sets up CORS and starts the server
- * Note: GraphQL handles validation automatically, so ValidationPipe is not needed
+ * Bootstrap function - Initializes and starts the NestJS application
  */
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const config = getApplicationConfig();
   
-  // Enable CORS for frontend
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
+    origin: config.cors.origin,
+    credentials: config.cors.credentials,
   });
 
-  await app.listen(process.env.PORT || 4000);
-  console.log(`Application is running on: ${await app.getUrl()}`);
-  console.log(`GraphQL playground: ${await app.getUrl()}/graphql`);
+  await app.listen(config.server.port);
+  
+  const serverUrl = await app.getUrl();
+  logger.log(`Server running on ${serverUrl}`);
+  logger.log(`GraphQL endpoint: ${serverUrl}${APP_CONSTANTS.ROUTES.GRAPHQL}`);
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  logger.error('Failed to start application', error);
+  process.exit(1);
+});
 

@@ -4,41 +4,44 @@ import { BrowserRouter } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
 import { Auth0Provider } from '@auth0/auth0-react';
 import App from './App';
+import { getAppConfig } from './config/app.config';
+import { APP_CONSTANTS } from './constants/app.constants';
 
-const domain = process.env.REACT_APP_AUTH0_DOMAIN || '';
-const clientId = process.env.REACT_APP_AUTH0_CLIENT_ID || '';
-const audience = process.env.REACT_APP_AUTH0_AUDIENCE || '';
+/**
+ * Application entry point
+ * Initializes React application with all required providers
+ */
+function initializeApp(): void {
+  const rootElement = document.getElementById('root');
+  
+  if (!rootElement) {
+    throw new Error(APP_CONSTANTS.ERROR_MESSAGES.ROOT_ELEMENT_NOT_FOUND);
+  }
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error('Root element not found');
+  const config = getAppConfig();
+  const root = ReactDOM.createRoot(rootElement);
+
+  const AppWithProviders = () => (
+    <BrowserRouter>
+      <Auth0Provider
+        domain={config.auth0.domain}
+        clientId={config.auth0.clientId}
+        authorizationParams={{
+          redirect_uri: config.auth0.redirectUri,
+          audience: config.auth0.audience,
+        }}
+        useRefreshTokens={config.auth0.useRefreshTokens}
+        cacheLocation={config.auth0.cacheLocation}
+      >
+        <ChakraProvider>
+          <App />
+        </ChakraProvider>
+      </Auth0Provider>
+    </BrowserRouter>
+  );
+
+  root.render(React.createElement(AppWithProviders));
 }
 
-const root = ReactDOM.createRoot(rootElement);
-const AppWithProviders = () => (
-  <BrowserRouter>
-    <Auth0Provider
-      domain={domain}
-      clientId={clientId}
-      authorizationParams={{
-        redirect_uri: window.location.origin,
-        audience: audience,
-      }}
-      useRefreshTokens={false}
-      cacheLocation="localstorage"
-    >
-      <ChakraProvider>
-        <App />
-      </ChakraProvider>
-    </Auth0Provider>
-  </BrowserRouter>
-);
-
-// Using type assertion to fix TypeScript compatibility issue
-// Note: StrictMode is disabled to prevent double API calls in development
-// StrictMode intentionally double-invokes components to detect side effects
-// In production builds, this won't be an issue
-root.render(
-  React.createElement(AppWithProviders)
-);
+initializeApp();
 

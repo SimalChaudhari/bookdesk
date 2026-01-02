@@ -7,37 +7,51 @@ import { join } from 'path';
 import { BookModule } from './book/book.module';
 import { AuthModule } from './auth/auth.module';
 import { Book } from './book/entities/book.entity';
+import { ConfigModule as AppConfigModule } from './config/config.module';
+import { getApplicationConfig } from './config/configuration';
 
 /**
  * AppModule - Main application module
  * GraphQL API with TypeORM and SQLite
+ * 
+ * This module serves as the root module of the application,
+ * configuring all core services including database, GraphQL, and authentication.
  */
 @Module({
   imports: [
-    // Load environment variables from .env file
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
+    // Global configuration module
+    AppConfigModule,
+    
+    // Database configuration using TypeORM
+    TypeOrmModule.forRootAsync({
+      useFactory: () => {
+        const config = getApplicationConfig();
+        return {
+          type: config.database.type,
+          database: config.database.database,
+          entities: [Book],
+          synchronize: config.database.synchronize,
+          logging: config.database.logging,
+        };
+      },
     }),
-    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      // Use /tmp directory on Vercel (only writable location in serverless)
-      // Note: Data will be lost on each deployment - use Railway/Render for persistence
-      database: process.env.VERCEL 
-        ? '/tmp/books.db' 
-        : process.env.DATABASE_PATH || 'books.db',
-      entities: [Book],
-      synchronize: true, // For development only
-    }),
-    GraphQLModule.forRoot<ApolloDriverConfig>({
+    
+    // GraphQL configuration
+    GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      // Use /tmp for schema file on Vercel (only writable location)
-      autoSchemaFile: process.env.VERCEL 
-        ? '/tmp/schema.gql' 
-        : join(process.cwd(), 'src/schema.gql'),
-      sortSchema: true,
-      context: ({ req }) => ({ req }),
+      useFactory: () => {
+        const config = getApplicationConfig();
+        return {
+          autoSchemaFile: join(process.cwd(), config.graphql.autoSchemaFile),
+          sortSchema: config.graphql.sortSchema,
+          playground: config.graphql.playground,
+          introspection: config.graphql.introspection,
+          context: ({ req }) => ({ req }),
+        };
+      },
     }),
+    
+    // Feature modules
     BookModule,
     AuthModule,
   ],

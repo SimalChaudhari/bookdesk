@@ -1,10 +1,11 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
-import { ApolloClient, ApolloProvider } from '@apollo/client';
+import { ApolloClient, ApolloProvider, InMemoryCache } from '@apollo/client';
 import { Box, Spinner, Center, Text, Button } from '@chakra-ui/react';
 import { createAuthLink } from './apollo/client';
-import { InMemoryCache } from '@apollo/client';
+import { getAppConfig } from './config/app.config';
+import { APP_CONSTANTS } from './constants/app.constants';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -16,29 +17,29 @@ import ProtectedRoute from './components/ProtectedRoute';
 function AppContent() {
   const { isAuthenticated, isLoading, getAccessTokenSilently, error: authError } = useAuth0();
   
-  // Use React.useMemo to ensure Apollo Client is only created once
+  const config = getAppConfig();
+  
   const apolloClient = React.useMemo(() => {
     if (!isAuthenticated) {
       return null;
     }
-    
+
     const link = createAuthLink(getAccessTokenSilently);
-    const client = new ApolloClient({
+    
+    return new ApolloClient({
       link,
       cache: new InMemoryCache(),
       defaultOptions: {
         watchQuery: {
-          fetchPolicy: 'cache-first',
-          nextFetchPolicy: 'cache-first',
+          fetchPolicy: config.apollo.fetchPolicy,
+          nextFetchPolicy: config.apollo.fetchPolicy,
         },
         query: {
-          fetchPolicy: 'cache-first',
+          fetchPolicy: config.apollo.fetchPolicy,
         },
       },
-      // Enable query deduplication to prevent duplicate requests
-      queryDeduplication: true,
+      queryDeduplication: config.apollo.queryDeduplication,
     });
-    return client;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
@@ -51,34 +52,32 @@ function AppContent() {
     );
   }
 
-  // Show error if authentication failed
   if (authError) {
-    console.error('Auth0 error:', authError);
-    
-    // Clear Auth0 cache on invalid state error
     const handleClearCache = () => {
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = '/login';
+      window.location.href = APP_CONSTANTS.ROUTES.LOGIN;
     };
-    
+
+    const isInvalidStateError = authError.message === 'Invalid state';
+
     return (
       <Box minH="100vh" bg="gray.50" p={8}>
         <Center h="100vh">
           <Box textAlign="center" maxW="md">
             <Text color="red.500" mb={4} fontSize="lg" fontWeight="bold">
-              Authentication Error
+              {APP_CONSTANTS.UI_MESSAGES.AUTH_ERROR_TITLE}
             </Text>
             <Text color="gray.600" mb={6}>
-              {authError.message === 'Invalid state' 
-                ? 'Please try signing in again. If the problem persists, clear your browser cache.'
+              {isInvalidStateError
+                ? APP_CONSTANTS.UI_MESSAGES.AUTH_ERROR_DESCRIPTION
                 : authError.message}
             </Text>
             <Button colorScheme="blue" onClick={handleClearCache} mr={3}>
-              Clear Cache & Retry
+              {APP_CONSTANTS.UI_MESSAGES.CLEAR_CACHE}
             </Button>
             <Button onClick={() => window.location.reload()}>
-              Reload Page
+              {APP_CONSTANTS.UI_MESSAGES.RELOAD_PAGE}
             </Button>
           </Box>
         </Center>
@@ -86,19 +85,20 @@ function AppContent() {
     );
   }
 
-  // If not authenticated, show login page
   if (!isAuthenticated) {
     return (
       <Box minH="100vh" bg="gray.50">
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path={APP_CONSTANTS.ROUTES.LOGIN} element={<Login />} />
+          <Route
+            path="*"
+            element={<Navigate to={APP_CONSTANTS.ROUTES.LOGIN} replace />}
+          />
         </Routes>
       </Box>
     );
   }
 
-  // If authenticated but Apollo client not ready, show loading
   if (!apolloClient) {
     return (
       <Center h="100vh">
@@ -107,20 +107,22 @@ function AppContent() {
     );
   }
 
-  // Show dashboard when authenticated and Apollo client ready
   return (
     <ApolloProvider client={apolloClient}>
       <Box minH="100vh" bg="gray.50">
         <Routes>
           <Route
-            path="/"
+            path={APP_CONSTANTS.ROUTES.HOME}
             element={
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to={APP_CONSTANTS.ROUTES.HOME} replace />}
+          />
         </Routes>
       </Box>
     </ApolloProvider>

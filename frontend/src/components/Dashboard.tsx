@@ -23,57 +23,17 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { DeleteIcon, EditIcon } from '@chakra-ui/icons';
-import { gql } from '@apollo/client';
+import { Book, BooksQueryResult } from '../types/book.types';
+import { APP_CONSTANTS } from '../constants/app.constants';
+import {
+  GET_BOOKS,
+  CREATE_BOOK,
+  UPDATE_BOOK,
+  DELETE_BOOK,
+} from '../graphql/book.queries';
 import BookModal from './BookModal';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import LogoutConfirmationModal from './LogoutConfirmationModal';
-
-// GraphQL queries and mutations
-const GET_BOOKS = gql`
-  query GetBooks {
-    books {
-      id
-      name
-      description
-    }
-  }
-`;
-
-const CREATE_BOOK = gql`
-  mutation CreateBook($createBookInput: CreateBookInput!) {
-    createBook(createBookInput: $createBookInput) {
-      id
-      name
-      description
-    }
-  }
-`;
-
-const UPDATE_BOOK = gql`
-  mutation UpdateBook($updateBookInput: UpdateBookInput!) {
-    updateBook(updateBookInput: $updateBookInput) {
-      id
-      name
-      description
-    }
-  }
-`;
-
-const DELETE_BOOK = gql`
-  mutation RemoveBook($id: Int!) {
-    removeBook(id: $id) {
-      id
-      name
-      description
-    }
-  }
-`;
-
-interface Book {
-  id: number;
-  name: string;
-  description: string;
-}
 
 /**
  * Dashboard component - Main view for managing books
@@ -103,13 +63,10 @@ const Dashboard = () => {
   // Use ref to track mutation in progress (persists across re-renders)
   const isMutationInProgress = useRef(false);
   
-  // GraphQL queries and mutations
-  // Using cache-first to prevent duplicate calls - only fetches from network if cache is empty
-  // nextFetchPolicy ensures subsequent fetches also use cache-first
-  const { loading, error, data } = useQuery<{ books: Book[] }>(GET_BOOKS, {
+  const { loading, error, data } = useQuery<BooksQueryResult>(GET_BOOKS, {
     fetchPolicy: 'cache-first',
     nextFetchPolicy: 'cache-first',
-    notifyOnNetworkStatusChange: false, // Disable to prevent extra network calls
+    notifyOnNetworkStatusChange: false,
     errorPolicy: 'all',
   });
   const [createBook] = useMutation(CREATE_BOOK, {
@@ -227,8 +184,7 @@ const Dashboard = () => {
       onDeleteModalClose();
       setBookToDelete(null);
     } catch (err) {
-      console.error('Error deleting book:', err);
-      alert('Failed to delete book');
+      alert(APP_CONSTANTS.ERROR_MESSAGES.BOOK_DELETE_ERROR);
     } finally {
       isMutationInProgress.current = false;
       setIsDeleting(false);
@@ -268,11 +224,12 @@ const Dashboard = () => {
           },
         });
       }
-      // No need to refetch - refetchQueries handles it automatically
-      onClose(); // Close the modal
+      onClose();
     } catch (err) {
-      console.error('Error saving book:', err);
-      alert('Failed to save book');
+      const errorMessage = editingBook
+        ? APP_CONSTANTS.ERROR_MESSAGES.BOOK_UPDATE_ERROR
+        : APP_CONSTANTS.ERROR_MESSAGES.BOOK_CREATE_ERROR;
+      alert(errorMessage);
     } finally {
       setIsSaving(false);
       isMutationInProgress.current = false;
@@ -292,7 +249,7 @@ const Dashboard = () => {
       <Container maxW="container.xl" py={8}>
         <Alert status="error">
           <AlertIcon />
-          Error loading books: {error.message}
+          {APP_CONSTANTS.ERROR_MESSAGES.BOOK_LOAD_ERROR}: {error.message}
         </Alert>
       </Container>
     );
