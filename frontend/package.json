@@ -43,9 +43,12 @@
     "@types/node": "^20.5.0",
     "@types/react": "^18.2.20",
     "@types/react-dom": "^18.2.7",
-    "typescript": "^5.1.6"
+    "typescript": "^4.9.5"
   },
   "resolutions": {
     "@types/react": "^18.2.20"
+  },
+  "overrides": {
+    "typescript": "^4.9.5"
   }
 }
