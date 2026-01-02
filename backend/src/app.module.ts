@@ -41,8 +41,13 @@ import { getApplicationConfig } from './config/configuration';
       driver: ApolloDriver,
       useFactory: () => {
         const config = getApplicationConfig();
+        // Use in-memory schema generation on Vercel, file-based for local development
+        const autoSchemaFile = config.graphql.autoSchemaFile === true
+          ? true
+          : join(process.cwd(), config.graphql.autoSchemaFile);
+        
         return {
-          autoSchemaFile: join(process.cwd(), config.graphql.autoSchemaFile),
+          autoSchemaFile,
           sortSchema: config.graphql.sortSchema,
           playground: config.graphql.playground,
           introspection: config.graphql.introspection,
