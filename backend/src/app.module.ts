@@ -21,13 +21,20 @@ import { Book } from './book/entities/book.entity';
     }),
     TypeOrmModule.forRoot({
       type: 'sqlite',
-      database: 'books.db',
+      // Use /tmp directory on Vercel (only writable location in serverless)
+      // Note: Data will be lost on each deployment - use Railway/Render for persistence
+      database: process.env.VERCEL 
+        ? '/tmp/books.db' 
+        : process.env.DATABASE_PATH || 'books.db',
       entities: [Book],
       synchronize: true, // For development only
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      // Use /tmp for schema file on Vercel (only writable location)
+      autoSchemaFile: process.env.VERCEL 
+        ? '/tmp/schema.gql' 
+        : join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
       context: ({ req }) => ({ req }),
     }),
