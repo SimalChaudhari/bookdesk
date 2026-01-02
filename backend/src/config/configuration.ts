@@ -11,7 +11,7 @@ export interface DatabaseConfig {
 }
 
 export interface GraphQLConfig {
-  readonly autoSchemaFile: string;
+  readonly autoSchemaFile: string | true;
   readonly sortSchema: boolean;
   readonly playground: boolean;
   readonly introspection: boolean;
@@ -68,7 +68,6 @@ const DEFAULT_CONFIG = {
   DATABASE_SYNCHRONIZE: true,
   DATABASE_LOGGING: false,
   GRAPHQL_SCHEMA_PATH: 'src/schema.gql',
-  GRAPHQL_TEMP_SCHEMA_PATH: '/tmp/schema.gql',
   GRAPHQL_TEMP_DATABASE_PATH: '/tmp/books.db',
   AUTH0_ALGORITHMS: ['RS256'] as const,
   AUTH0_JWKS_REQUESTS_PER_MINUTE: 5,
@@ -146,8 +145,9 @@ function getDatabaseConfig(serverConfig: ServerConfig): DatabaseConfig {
  * Gets GraphQL configuration
  */
 function getGraphQLConfig(serverConfig: ServerConfig): GraphQLConfig {
+  // Use in-memory schema generation on Vercel (serverless) to avoid file system issues
   const autoSchemaFile = serverConfig.isVercel
-    ? DEFAULT_CONFIG.GRAPHQL_TEMP_SCHEMA_PATH
+    ? true
     : DEFAULT_CONFIG.GRAPHQL_SCHEMA_PATH;
 
   const isDevelopment = serverConfig.environment === DEFAULT_CONFIG.SERVER_ENVIRONMENT_DEVELOPMENT;
