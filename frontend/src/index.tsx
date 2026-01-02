@@ -15,7 +15,6 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-
 const AppWithProviders = () => (
   <BrowserRouter>
     <Auth0Provider
